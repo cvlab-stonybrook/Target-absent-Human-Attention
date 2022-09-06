@@ -23,7 +23,7 @@ year = {2022}
 
     
 ## Data Preparation
-We follow the settings in [IRL (Yang et al., CVPR2020](https://github.com/cvlab-stonybrook/Scanpath_Prediction) and use an action space of 20x32 and [COCO-Search18](https://sites.google.com/view/cocosearch/home) as the training and evaluation dataset.
+We follow the settings in [IRL (Yang et al., CVPR2020)](https://github.com/cvlab-stonybrook/Scanpath_Prediction) and use an action space of 20x32 and [COCO-Search18](https://sites.google.com/view/cocosearch/home) as the training and evaluation dataset.
 
 
 ```
