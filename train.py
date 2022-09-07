@@ -135,7 +135,9 @@ if __name__ == '__main__':
 
     agent, train_gaze_loader, train_img_loader, valid_img_loader,\
         valid_img_loader_ta, env, env_valid, global_step, bbox_annos,\
-        human_cdf, fix_clusters = build(hparams, dataset_root, device)
+        human_cdf, fix_clusters, prior_maps_tp, prior_maps_ta,\
+        sss_strings, valid_gaze_loader_tp, valid_gaze_loader_ta = build(
+            hparams, dataset_root, device)
 
     if args.eval_only:
         if hparams.Data.TAP != 'TA':
@@ -143,10 +145,14 @@ if __name__ == '__main__':
                 env_valid,
                 agent,
                 valid_img_loader,
+                valid_gaze_loader_tp,
                 hparams_tp.Data,
                 bbox_annos,
                 human_cdf,
                 fix_clusters,
+                prior_maps_tp,
+                sss_strings,
+                dataset_root,
                 sample_action=False,
                 sample_scheme='Greedy',
             )
@@ -156,10 +162,14 @@ if __name__ == '__main__':
             env_valid,
             agent,
             valid_img_loader_ta,
+            valid_gaze_loader_ta,
             hparams_ta.Data,
             bbox_annos,
             human_cdf,
             fix_clusters,
+            prior_maps_ta,
+            sss_strings,
+            dataset_root,
             sample_action=False,
             sample_scheme='Greedy',
         )
@@ -207,6 +217,9 @@ if __name__ == '__main__':
                             bbox_annos,
                             human_cdf,
                             fix_clusters,
+                            prior_maps_tp,
+                            sss_strings,
+                            dataset_root,
                             sample_action=False,
                             sample_scheme='Greedy',
                         )
@@ -220,6 +233,9 @@ if __name__ == '__main__':
                         bbox_annos,
                         human_cdf,
                         fix_clusters,
+                        prior_maps_ta,
+                        sss_strings,
+                        dataset_root,
                         sample_action=False,
                         sample_scheme='Greedy',
                     )

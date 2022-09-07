@@ -4,7 +4,7 @@ from .models import FFNGeneratorCond_V2
 from .sql import SoftQ
 from .iql import irl_update, irl_update_critic
 from .config import JsonConfig
-
+from .utils import get_prior_maps
 import json
 from os.path import join
 
@@ -39,8 +39,11 @@ def build(hparams, dataset_root, device):
 
     # choose data to use: TP = target-present trials, TA = target-absent trials
     # else = TP + TA trials
-    human_scanpaths_TA = list(
-        filter(lambda x: x['condition'] == 'absent', human_scanpaths))
+    human_scanpaths_ta = list(
+        filter(lambda x: x['condition'] == 'absent', human_scanpaths_all))
+    human_scanpaths_tp = list(
+        filter(lambda x: x['condition'] == 'present', human_scanpaths_all))
+
     if hparams.Data.TAP == 'TP':
         human_scanpaths = list(
             filter(lambda x: x['condition'] == 'present', human_scanpaths))
@@ -97,6 +100,20 @@ def build(hparams, dataset_root, device):
                                      num_workers=n_workers,
                                      drop_last=False,
                                      pin_memory=True)
+    valid_HG_loader_TP = DataLoader(
+        dataset['gaze_valid_TP'],
+        batch_size=batch_size,
+        shuffle=False,
+        num_workers=n_workers,
+        drop_last=False,
+        pin_memory=True)
+    valid_HG_loader_TA = DataLoader(
+        dataset['gaze_valid_TA'],
+        batch_size=batch_size,
+        shuffle=False,
+        num_workers=n_workers,
+        drop_last=False,
+        pin_memory=True)
 
     ffn_dim = hparams.Model.foveal_feature_dim
     hidden_dim = hparams.Model.gen_hidden_size
@@ -108,7 +125,6 @@ def build(hparams, dataset_root, device):
         q_net.load_state_dict(ckp['model'])
         print(f"loaded weights from {hparams.Model.checkpoint}.")
     except:
-        print("Training from scratch.")
         ckp = None
     q_net = torch.nn.DataParallel(q_net)
 
@@ -138,7 +154,23 @@ def build(hparams, dataset_root, device):
     bbox_annos = dataset['bbox_annos']
     human_cdf = dataset['human_cdf']
     fix_clusters = dataset['fix_clusters']
-    
+    prior_maps_ta = get_prior_maps(human_scanpaths_ta, hparams.Data.im_w,
+                                   hparams.Data.im_h)
+    keys = list(prior_maps_ta.keys())
+    for k in keys:
+        prior_maps_ta[f'{k}_absent'] = torch.tensor(
+            prior_maps_ta.pop(k)).to(device)
+
+    prior_maps_tp = get_prior_maps(human_scanpaths_tp, hparams.Data.im_w,
+                                   hparams.Data.im_h)
+    keys = list(prior_maps_tp.keys())
+    for k in keys:
+        prior_maps_tp[f'{k}_present'] = torch.tensor(
+            prior_maps_tp.pop(k)).to(device)
+
+    sss_strings = np.load(join(dataset_root, 'semantic_seq/test.pkl'),
+                          allow_pickle=True)
     return (agent, train_HG_loader, train_img_loader, valid_img_loader,
             valid_img_loader_TA, env, env_valid, global_step, bbox_annos,
-            human_cdf, fix_clusters)
+            human_cdf, fix_clusters, prior_maps_tp, prior_maps_ta, sss_strings,
+            valid_HG_loader_TP, valid_HG_loader_TA)

@@ -21,9 +21,9 @@ def process_data(target_trajs,
 
     print("using", hparams.Train.repr)
     if use_coco_annotation:
-        annFile = join(dataset_root, hparams.Data.coco_anno_dir, 'instances_train2017.json')
+        annFile = join(hparams.Data.coco_anno_dir, 'instances_train2017.json')
         coco_annos_train = COCO(annFile)
-        annFile = join(dataset_root, hparams.Data.coco_anno_dir, 'instances_val2017.json')
+        annFile = join(hparams.Data.coco_anno_dir, 'instances_val2017.json')
         coco_annos_val = COCO(annFile)
         coco_annos = (coco_annos_train, coco_annos_val)
     else:
@@ -51,9 +51,10 @@ def process_data(target_trajs,
         raise NotImplementedError
 
     valid_target_trajs_all = list(
-            filter(lambda x: x['split'] == 'test', target_trajs_all))
-    
-    fix_clusters = np.load(f'{dataset_root}/clusters.npy', allow_pickle=True).item()
+        filter(lambda x: x['split'] == 'test', target_trajs_all))
+
+    fix_clusters = np.load(f'{dataset_root}/clusters.npy',
+                           allow_pickle=True).item()
     for k, v in fix_clusters.items():
         # remove other subjects' data if "subject" is specified
         if hparams.Data.subject > -1:
@@ -164,10 +165,11 @@ def process_data(target_trajs,
         ])
 
         tp_trajs = list(
-            filter(lambda x: x['condition'] == 'present' and x['split'] == 'test',
-                   target_trajs_all))
-        human_mean_cdf, _ = compute_search_cdf(
-            tp_trajs, target_annos, hparams.Data.max_traj_length)
+            filter(
+                lambda x: x['condition'] == 'present' and x['split'] == 'test',
+                target_trajs_all))
+        human_mean_cdf, _ = compute_search_cdf(tp_trajs, target_annos,
+                                               hparams.Data.max_traj_length)
         print('target fixation prob (valid).:', human_mean_cdf)
 
         valid_fix_labels = preprocess_fixations(
@@ -188,19 +190,23 @@ def process_data(target_trajs,
 
             valid_task_img_pair_TP = np.unique([
                 traj['task'] + '_' + traj['name'] + '_' + traj['condition']
-                for traj in valid_target_trajs_all if traj['condition'] == 'present'
+                for traj in valid_target_trajs_all
+                if traj['condition'] == 'present'
             ])
 
             valid_img_dataset_TP = DCB_IRL(DCB_HR_dir, DCB_LR_dir,
-                                           target_init_fixs, valid_task_img_pair_TP,
+                                           target_init_fixs,
+                                           valid_task_img_pair_TP,
                                            target_annos, hparams.Data, catIds)
-            
+
             valid_task_img_pair_TA = np.unique([
                 traj['task'] + '_' + traj['name'] + '_' + traj['condition']
-                for traj in valid_target_trajs_all if traj['condition'] == 'absent'
+                for traj in valid_target_trajs_all
+                if traj['condition'] == 'absent'
             ])
             valid_img_dataset_TA = DCB_IRL(DCB_HR_dir, DCB_LR_dir,
-                                           target_init_fixs, valid_task_img_pair_TA,
+                                           target_init_fixs,
+                                           valid_task_img_pair_TA,
                                            target_annos, hparams.Data, catIds)
 
             # load human gaze data
@@ -212,14 +218,15 @@ def process_data(target_trajs,
                                               hparams.Data,
                                               catIds,
                                               mix_match=hparams.Data.mix_match)
-            valid_HG_dataset = DCB_Human_Gaze(DCB_HR_dir,
-                                              DCB_LR_dir,
-                                              valid_fix_labels,
-                                              valid_task_img_pair,
-                                              target_annos,
-                                              hparams.Data,
-                                              catIds,
-                                              blur_action=hparams.Data.blur_action)
+            valid_HG_dataset = DCB_Human_Gaze(
+                DCB_HR_dir,
+                DCB_LR_dir,
+                valid_fix_labels,
+                valid_task_img_pair,
+                target_annos,
+                hparams.Data,
+                catIds,
+                blur_action=hparams.Data.blur_action)
         elif hparams.Train.repr == 'CFI':
             # load image data
             train_img_dataset = CFI_IRL(dataset_root, target_init_fixs,
@@ -227,22 +234,25 @@ def process_data(target_trajs,
                                         transform_train, hparams.Data, catIds)
             valid_task_img_pair_TP = np.unique([
                 traj['task'] + '_' + traj['name'] + '_' + traj['condition']
-                for traj in valid_target_trajs_all if traj['condition'] == 'present'
+                for traj in valid_target_trajs_all
+                if traj['condition'] == 'present'
             ])
 
             valid_img_dataset_TP = CFI_IRL(dataset_root, target_init_fixs,
-                                        valid_task_img_pair_TP, target_annos,
-                                        transform_train, hparams.Data, catIds)
-            
+                                           valid_task_img_pair_TP,
+                                           target_annos, transform_train,
+                                           hparams.Data, catIds)
+
             valid_task_img_pair_TA = np.unique([
                 traj['task'] + '_' + traj['name'] + '_' + traj['condition']
-                for traj in valid_target_trajs_all if traj['condition'] == 'absent'
+                for traj in valid_target_trajs_all
+                if traj['condition'] == 'absent'
             ])
             valid_img_dataset_TA = CFI_IRL(dataset_root, target_init_fixs,
-                                        valid_task_img_pair_TA, target_annos,
-                                        transform_train, hparams.Data, catIds)
+                                           valid_task_img_pair_TA,
+                                           target_annos, transform_train,
+                                           hparams.Data, catIds)
 
-            
             if hparams.Data.TAP == 'TAP':
                 valid_img_info_TP = list(
                     filter(lambda x: x.split('_')[-1] == 'present',
@@ -284,36 +294,51 @@ def process_data(target_trajs,
                                               blur_action=True)
         elif hparams.Train.repr == 'FFN':
             # load image data
-            train_img_dataset = FFN_IRL(dataset_root, None,
-                                        train_task_img_pair, target_annos,
-                                        transform_train, hparams.Data, catIds,
+            train_img_dataset = FFN_IRL(dataset_root,
+                                        None,
+                                        train_task_img_pair,
+                                        target_annos,
+                                        transform_train,
+                                        hparams.Data,
+                                        catIds,
                                         coco_annos=coco_annos)
 
             valid_task_img_pair_all = np.unique([
                 traj['task'] + '_' + traj['name'] + '_' + traj['condition']
                 for traj in valid_target_trajs_all
             ])
-            valid_img_dataset_all = FFN_IRL(dataset_root, None,
-                                           valid_task_img_pair_all, target_annos,
-                                           transform_test, hparams.Data, catIds,
-                                           coco_annos=coco_annos)
-            
+            valid_img_dataset_all = FFN_IRL(dataset_root,
+                                            None,
+                                            valid_task_img_pair_all,
+                                            target_annos,
+                                            transform_test,
+                                            hparams.Data,
+                                            catIds,
+                                            coco_annos=coco_annos)
+
             valid_task_img_pair_TP = np.unique([
                 traj['task'] + '_' + traj['name'] + '_' + traj['condition']
-                for traj in valid_target_trajs_all if traj['condition'] == 'present'
+                for traj in valid_target_trajs_all
+                if traj['condition'] == 'present'
             ])
-            valid_img_dataset_TP = FFN_IRL(dataset_root, None,
-                                           valid_task_img_pair_TP, target_annos,
-                                           transform_test, hparams.Data, catIds,
+            valid_img_dataset_TP = FFN_IRL(dataset_root,
+                                           None,
+                                           valid_task_img_pair_TP,
+                                           target_annos,
+                                           transform_test,
+                                           hparams.Data,
+                                           catIds,
                                            coco_annos=coco_annos)
-            
+
             valid_task_img_pair_TA = np.unique([
                 traj['task'] + '_' + traj['name'] + '_' + traj['condition']
-                for traj in valid_target_trajs_all if traj['condition'] == 'absent'
+                for traj in valid_target_trajs_all
+                if traj['condition'] == 'absent'
             ])
             valid_img_dataset_TA = FFN_IRL(dataset_root, None,
-                                           valid_task_img_pair_TA, target_annos,
-                                           transform_test, hparams.Data, catIds, coco_annos)
+                                           valid_task_img_pair_TA,
+                                           target_annos, transform_test,
+                                           hparams.Data, catIds, coco_annos)
 
             train_HG_dataset = FFN_Human_Gaze(dataset_root,
                                               train_fix_labels,
@@ -333,7 +358,9 @@ def process_data(target_trajs,
                                               catIds,
                                               blur_action=True,
                                               coco_annos=coco_annos)
-            valid_target_trajs_TP = list(filter(lambda x: x['condition'] == 'present', valid_target_trajs_all))
+            valid_target_trajs_TP = list(
+                filter(lambda x: x['condition'] == 'present',
+                       valid_target_trajs_all))
             valid_fix_labels_TP = preprocess_fixations(
                 valid_target_trajs_TP,
                 hparams.Data.patch_size,
@@ -343,15 +370,17 @@ def process_data(target_trajs,
                 has_stop=hparams.Data.has_stop,
                 sample_scanpath=sample_scanpath)
             valid_HG_dataset_TP = FFN_Human_Gaze(dataset_root,
-                                              valid_fix_labels_TP,
-                                              target_annos,
-                                              scene_labels,
-                                              hparams.Data,
-                                              transform_test,
-                                              catIds,
-                                              blur_action=True,
-                                              coco_annos=coco_annos)
-            valid_target_trajs_TA = list(filter(lambda x: x['condition'] == 'absent', valid_target_trajs_all))
+                                                 valid_fix_labels_TP,
+                                                 target_annos,
+                                                 scene_labels,
+                                                 hparams.Data,
+                                                 transform_test,
+                                                 catIds,
+                                                 blur_action=True,
+                                                 coco_annos=coco_annos)
+            valid_target_trajs_TA = list(
+                filter(lambda x: x['condition'] == 'absent',
+                       valid_target_trajs_all))
             valid_fix_labels_TA = preprocess_fixations(
                 valid_target_trajs_TA,
                 hparams.Data.patch_size,
@@ -361,14 +390,14 @@ def process_data(target_trajs,
                 has_stop=hparams.Data.has_stop,
                 sample_scanpath=sample_scanpath)
             valid_HG_dataset_TA = FFN_Human_Gaze(dataset_root,
-                                              valid_fix_labels_TA,
-                                              target_annos,
-                                              scene_labels,
-                                              hparams.Data,
-                                              transform_test,
-                                              catIds,
-                                              blur_action=True,
-                                              coco_annos=coco_annos)
+                                                 valid_fix_labels_TA,
+                                                 target_annos,
+                                                 scene_labels,
+                                                 hparams.Data,
+                                                 transform_test,
+                                                 catIds,
+                                                 blur_action=True,
+                                                 coco_annos=coco_annos)
             valid_fix_labels_all = preprocess_fixations(
                 valid_target_trajs_all,
                 hparams.Data.patch_size,
@@ -378,18 +407,16 @@ def process_data(target_trajs,
                 has_stop=hparams.Data.has_stop,
                 sample_scanpath=sample_scanpath)
             valid_HG_dataset_all = FFN_Human_Gaze(dataset_root,
-                                              valid_fix_labels_all,
-                                              target_annos,
-                                              scene_labels,
-                                              hparams.Data,
-                                              transform_test,
-                                              catIds,
-                                              blur_action=True,
-                                              coco_annos=coco_annos)
+                                                  valid_fix_labels_all,
+                                                  target_annos,
+                                                  scene_labels,
+                                                  hparams.Data,
+                                                  transform_test,
+                                                  catIds,
+                                                  blur_action=True,
+                                                  coco_annos=coco_annos)
 
         cutFixOnTarget(target_trajs, target_annos)
-        prior_maps = get_prior_maps(target_trajs, hparams.Data.im_w,
-                                    hparams.Data.im_h)
 
         return {
             'catIds': catIds,
@@ -405,5 +432,4 @@ def process_data(target_trajs,
             'fix_clusters': fix_clusters,
             'valid_scanpaths': valid_target_trajs_all,
             'human_cdf': human_mean_cdf,
-            'prior_maps': prior_maps
         }
