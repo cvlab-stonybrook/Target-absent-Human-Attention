@@ -14,6 +14,18 @@ year = {2022}
 }
 ```
 
+## Installation
+```bash
+conda create --name my_env python=3.8 -y
+conda activate my_env
+conda install pytorch==1.11.0 torchvision==0.12.0 torchaudio==0.11.0 cudatoolkit=11.3 -c pytorch
+pip install -U opencv-python
+
+git clone git@github.com:cvlab-stonybrook/Target-absent-Human-Attention.git
+cd Target-absent-Human-Attention
+pip install -r requirements.txt
+```
+
 ## Scripts
 - Train a model with
     ```
@@ -26,5 +38,4 @@ year = {2022}
 We follow the settings in [IRL (Yang et al., CVPR2020)](https://github.com/cvlab-stonybrook/Scanpath_Prediction) and use an action space of 20x32 and [COCO-Search18](https://sites.google.com/view/cocosearch/home) as the training and evaluation dataset.
 
 
-```
 
