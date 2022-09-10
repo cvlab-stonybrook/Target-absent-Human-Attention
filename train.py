@@ -63,67 +63,6 @@ def get_batch(policy_buffer, expert_demos_iter, expert_loader, batch_size):
     return policy_batch, expert_batch, expert_demos_iter
 
 
-def train_iter(agent, batch, train_gaze_loader, expert_demos_iter,
-               online_memory_replay, env, global_step, hparams, print_every):
-    """Perform training for one iteration."""
-
-    # run policy to collect trajactories
-    env.set_data(batch)
-    obs_fov = env.observe()
-
-    states = pack_model_inputs(obs_fov, env)
-    act, stop = agent.select_action(
-        states,
-        True,
-        action_mask=env.action_mask,
-        sample_stop=env.pa.has_stop,
-    )
-
-    i_step = 0
-    while i_step < hparams.Data.max_traj_length and env.status.min() < 1:
-        i_step += 1
-        new_obs_fov, curr_status = env.step(act)
-
-        new_states = pack_model_inputs(new_obs_fov, env)
-        online_memory_replay.add_batch(
-            (states, new_states, act, curr_status, batch['centermaps']))
-        states = new_states
-        act, stop = agent.select_action(
-            states,
-            True,
-            action_mask=env.action_mask,
-            sample_stop=env.pa.has_stop,
-        )
-
-    # Start learning
-    if online_memory_replay.size() >= INITIAL_MEMORY:
-        policy_batch, expert_batch, expert_demos_iter = get_batch(
-            online_memory_replay,
-            expert_demos_iter,
-            train_gaze_loader,
-            hparams.Train.batch_size,
-        )
-        losses = agent.irl_update(
-            policy_batch,
-            expert_batch,
-            global_step,
-            hparams.Data.patch_num,
-        )
-        if global_step % print_every == print_every - 1:
-            print(
-                "iter: {}, progress: {:.3f}, epoch: {}, total loss: {:.3f}, value loss: {:.3f}, softq loss: {:.3f}, detection loss: {:.3f}"
-                .format(
-                    global_step,
-                    (global_step / total_iters) * 100,
-                    i_epoch,
-                    losses['total_loss'],
-                    losses['value_loss'],
-                    losses['softq_loss'],
-                    losses['detection_loss'],
-                ))
-            wandb.log(losses, global_step)
-
-
 if __name__ == '__main__':
     args = parse_args()
     hparams = JsonConfig(args.hparams)
@@ -201,65 +140,119 @@ if __name__ == '__main__':
         total_iters = len(train_img_loader) * NUM_EPOCH
         for i_epoch in range(NUM_EPOCH):
             for i_batch, batch in enumerate(train_img_loader):
-                train_iter(agent, batch, train_gaze_loader,
-                           expert_demos_iter,
-                           online_memory_replay, env,
-                           global_step, hparams, print_every)
+                # run policy to collect trajactories
+                env.set_data(batch)
+                obs_fov = env.observe()
 
-                # Evaluate
-                if global_step % eval_every == eval_every - 1:
-                    if hparams.Data.TAP != 'TA':
-                        rst = evaluate(
+                states = pack_model_inputs(obs_fov, env)
+                act, stop = agent.select_action(
+                    states,
+                    True,
+                    action_mask=env.action_mask,
+                    sample_stop=env.pa.has_stop,
+                )
+
+                i_step = 0
+                while i_step < hparams.Data.max_traj_length and env.status.min() < 1:
+                    i_step += 1
+                    new_obs_fov, curr_status = env.step(act)
+
+                    new_states = pack_model_inputs(new_obs_fov, env)
+                    online_memory_replay.add_batch(
+                        (states, new_states, act, curr_status, batch['centermaps']))
+                    states = new_states
+                    act, stop = agent.select_action(
+                        states,
+                        True,
+                        action_mask=env.action_mask,
+                        sample_stop=env.pa.has_stop,
+                    )
+
+        
+                    if online_memory_replay.size() <= INITIAL_MEMORY:
+                        continue
+
+                    # Start learning
+                    policy_batch, expert_batch, expert_demos_iter = get_batch(
+                        online_memory_replay,
+                        expert_demos_iter,
+                        train_gaze_loader,
+                        hparams.Train.batch_size,
+                    )
+                    losses = agent.irl_update(
+                        policy_batch,
+                        expert_batch,
+                        global_step,
+                        hparams.Data.patch_num,
+                    )
+                    if global_step % print_every == print_every - 1:
+                        print(
+                            "iter: {}, progress: {:.3f}, epoch: {}, total loss: {:.3f}, value loss: {:.3f}, softq loss: {:.3f}, detection loss: {:.3f}"
+                            .format(
+                                global_step,
+                                (global_step / total_iters) * 100,
+                                i_epoch,
+                                losses['total_loss'],
+                                losses['value_loss'],
+                                losses['softq_loss'],
+                                losses['detection_loss'],
+                            ))
+                        wandb.log(losses, global_step)
+
+                    # Evaluate
+                    if global_step % eval_every == eval_every - 1:
+                        if hparams.Data.TAP != 'TA':
+                            rst = evaluate(
+                                env_valid,
+                                agent,
+                                valid_img_loader,
+                                hparams_tp.Data,
+                                bbox_annos,
+                                human_cdf,
+                                fix_clusters,
+                                prior_maps_tp,
+                                sss_strings,
+                                dataset_root,
+                                sample_action=False,
+                                sample_scheme='Greedy',
+                            )
+                            wandb.log(rst, step=global_step)
+                            print("TP:", rst)
+                        rst_ta = evaluate(
                             env_valid,
                             agent,
-                            valid_img_loader,
-                            hparams_tp.Data,
+                            valid_img_loader_ta,
+                            hparams_ta.Data,
                             bbox_annos,
                             human_cdf,
                             fix_clusters,
-                            prior_maps_tp,
+                            prior_maps_ta,
                             sss_strings,
                             dataset_root,
                             sample_action=False,
                             sample_scheme='Greedy',
                         )
-                        wandb.log(rst, step=global_step)
-                        print("TP:", rst)
-                    rst_ta = evaluate(
-                        env_valid,
-                        agent,
-                        valid_img_loader_ta,
-                        hparams_ta.Data,
-                        bbox_annos,
-                        human_cdf,
-                        fix_clusters,
-                        prior_maps_ta,
-                        sss_strings,
-                        dataset_root,
-                        sample_action=False,
-                        sample_scheme='Greedy',
-                    )
-                    print("TA:", rst_ta)
-                    wandb.log(rst_ta, step=global_step)
-                    wandb.log(
-                        {
-                            'epoch':
-                            global_step / float(len(train_img_loader)),
-                        },
-                        step=global_step,
-                    )
+                        print("TA:", rst_ta)
+                        wandb.log(rst_ta, step=global_step)
+                        wandb.log(
+                            {
+                                'epoch':
+                                global_step / float(len(train_img_loader)),
+                            },
+                            step=global_step,
+                        )
 
-                if global_step % save_every == save_every - 1:
-                    save_path = os.path.join(log_dir, f"ckp_{global_step}.pt")
-                    print(f"Saving checkpoint to {save_path}.")
-                    torch.save(
-                        {
-                            'model': agent.q_net.state_dict(),
-                            'optimizer': agent.critic_optimizer.state_dict(),
-                            'step': global_step,
-                        },
-                        save_path,
-                    )
-                global_step += 1
+                    if global_step % save_every == save_every - 1:
+                        save_path = os.path.join(log_dir, f"ckp_{global_step}.pt")
+                        print(f"Saving checkpoint to {save_path}.")
+                        torch.save(
+                            {
+                                'model': agent.q_net.state_dict(),
+                                'optimizer': agent.critic_optimizer.state_dict(),
+                                'step': global_step + 1,
+                            },
+                            save_path,
+                        )
+                    global_step += 1
 
     print("Done!")
