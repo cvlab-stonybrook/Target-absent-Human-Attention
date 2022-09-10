@@ -31,8 +31,10 @@ pip install -r requirements.txt
     ```
     python train.py --hparams <hparams-path> --dataset_root <dataset-path>
     ```
-- Evaluation (to be updated)
-
+- Evaluation
+    ```
+    python train.py --hparams <hparams-path> --dataset_root <dataset-path> --eval-only
+    ```
     
 ## Data Preparation
 We follow the settings in [IRL (Yang et al., CVPR2020)](https://github.com/cvlab-stonybrook/Scanpath_Prediction) and use an action space of 20x32 and [COCO-Search18](https://sites.google.com/view/cocosearch/home) as the training and evaluation dataset.

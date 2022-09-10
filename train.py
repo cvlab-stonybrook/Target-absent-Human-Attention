@@ -222,6 +222,7 @@ if __name__ == '__main__':
                             env_valid,
                             agent,
                             valid_img_loader_ta,
+                            valid_gaze_loader_ta,
                             hparams_ta.Data,
                             bbox_annos,
                             human_cdf,
