@@ -31,6 +31,9 @@ pip install -r requirements.txt
     ```
     python train.py --hparams <hparams-path> --dataset_root <dataset-path>
     ```
+- Train termination predictor (to be updated...)
+    ```
+    ```
 - Evaluation
     ```
     python train.py --hparams <hparams-path> --dataset_root <dataset-path> --eval-only
