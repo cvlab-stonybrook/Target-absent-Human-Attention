@@ -123,6 +123,8 @@ def build(hparams, dataset_root, device, is_testing=False):
         q_net.load_state_dict(ckp['model'])
         print(f"loaded weights from {hparams.Model.checkpoint}.")
     except:
+        if len(hparams.Model.checkpoint) > 0:
+            print(f"failed to read checkpoint from {hparams.Model.checkpoint}.")
         ckp = None
     q_net = torch.nn.DataParallel(q_net)
 

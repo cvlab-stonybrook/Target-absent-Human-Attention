@@ -6,14 +6,20 @@ import numpy as np
 import torch.nn.functional as F
 
 
-def pack_model_inputs(obs_fov, env):
+def pack_model_inputs(obs_fov, env, has_stop=False):
     is_composite_state = isinstance(obs_fov, tuple)
     if is_composite_state:
         inputs = (*obs_fov, env.task_ids)
     else:
         inputs = (obs_fov, env.task_ids)
+        
+    if has_stop:
+        batch_size = env.task_ids.size(0)
+        n_fixs = env.step_id + 1
+        normed_n_fixs = torch.ones(batch_size, 1) * n_fixs
+        inputs = (*inputs, normed_n_fixs)
+    
     return inputs
-
 
 def collect_trajs(env,
                   policy,
@@ -28,11 +34,10 @@ def collect_trajs(env,
     rewards = []
     obs_fov = env.observe()
 
-    states = pack_model_inputs(obs_fov, env)
+    states = pack_model_inputs(obs_fov, env, sample_stop)
     act, stop = policy.select_action(states,
                                      sample_action,
-                                     action_mask=env.action_mask,
-                                     sample_stop=sample_stop)
+                                     action_mask=env.action_mask)
     status = [env.status]
 
     i = 0
@@ -45,11 +50,10 @@ def collect_trajs(env,
         status.append(curr_status)
         actions.append(act)
         obs_fov = new_obs_fov
-        states = pack_model_inputs(obs_fov, env)
+        states = pack_model_inputs(obs_fov, env, sample_stop)
         act, stop = policy.select_action(states,
                                          sample_action,
-                                         action_mask=env.action_mask,
-                                         sample_stop=sample_stop)
+                                         action_mask=env.action_mask)
         i = i + 1
 
     status = torch.stack(status[1:])
@@ -177,7 +181,8 @@ def evaluate(env,
              dataset_root,
              sample_action=True,
              sample_scheme='CLS_MAX',
-             sample_stop=False):
+             sample_stop=False,
+             return_scanpath=False):
     model.eval()
     TAP = pa.TAP
     scanpaths = sample_scanpaths(env, model, dataloader, pa, sample_action,
@@ -263,4 +268,7 @@ def evaluate(env,
 
     model.train()
 
-    return metrics_dict
+    if return_scanpath:
+        return metrics_dict, scanpaths
+    else:
+        return metrics_dict
