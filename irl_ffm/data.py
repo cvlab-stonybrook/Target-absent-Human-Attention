@@ -192,7 +192,7 @@ class CFI_IRL(Dataset):
                  catIds):
         self.img_info = img_info
         self.root_dir = root_dir
-        self.img_dir = root_dir + 'images/320x512/'
+        self.img_dir = join(root_dir, 'images/320x512/')
         self.transform = transform
         self.pa = pa
         self.bboxes = annos
@@ -266,7 +266,7 @@ class CFI_Human_Gaze(Dataset):
                  blur_action=False,
                  acc_foveal=True):
         self.root_dir = root_dir
-        self.img_dir = root_dir + 'images/320x512/'
+        self.img_dir = join(root_dir, 'images/320x512/')
         self.pa = pa
         self.transform = transform
         self.fix_labels = fix_labels
@@ -414,13 +414,13 @@ class FFN_IRL(Dataset):
                  catIds, coco_annos=None):
         self.img_info = img_info
         self.root_dir = root_dir
-        self.img_dir = root_dir + 'images'
+        self.img_dir = join(root_dir, 'images')
         self.transform = transform
         self.pa = pa
         self.bboxes = annos
         self.initial_fix = initial_fix
         self.catIds = catIds
-        self.prior_maps = torch.load(root_dir + pa.prior_maps_dir)
+        self.prior_maps = torch.load(join(root_dir, pa.prior_maps_dir))
         if self.pa.use_DCB_target:
             self.coco_thing_classes = np.load(join(root_dir,
                                                    'coco_thing_classes.npy'),
@@ -499,7 +499,7 @@ class FFN_Human_Gaze(Dataset):
                  acc_foveal=True,
                  coco_annos=None):
         self.root_dir = root_dir
-        self.img_dir = root_dir + 'images'
+        self.img_dir = join(root_dir, 'images')
         self.pa = pa
         self.transform = transform
         # Remove scanpaths longer than max_traj_length
@@ -509,7 +509,7 @@ class FFN_Human_Gaze(Dataset):
         self.blur_action = blur_action
         self.acc_foveal = acc_foveal
         self.bboxes = bbox_annos
-        self.prior_maps = torch.load(root_dir + pa.prior_maps_dir)
+        self.prior_maps = torch.load(join(root_dir, pa.prior_maps_dir))
         self.scene_labels = scene_annos['labels']
         self.scene_to_id = scene_annos['id_list']
 

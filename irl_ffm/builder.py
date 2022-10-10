@@ -14,7 +14,7 @@ from torch.utils.data import DataLoader
 import types
 
 
-def build(hparams, dataset_root, device):
+def build(hparams, dataset_root, device, is_testing=False):
     # dir of pre-computed beliefs
     data_name = '{}x{}'.format(hparams.Data.im_w, hparams.Data.im_h)
 
@@ -66,18 +66,19 @@ def build(hparams, dataset_root, device):
                            bbox_annos,
                            hparams,
                            human_scanpaths_all,
+                           is_testing=is_testing,
                            sample_scanpath=False,
-                           use_coco_annotation=True)
+                           use_coco_annotation=not is_testing)
 
     batch_size = hparams.Train.batch_size
     n_workers = hparams.Train.n_workers
+
     train_HG_loader = DataLoader(dataset['gaze_train'],
                                  batch_size=batch_size,
                                  shuffle=True,
                                  num_workers=n_workers,
                                  drop_last=True,
                                  pin_memory=True)
-
     print('num of training batches =', len(train_HG_loader))
 
     train_img_loader = DataLoader(dataset['img_train'],
@@ -86,34 +87,31 @@ def build(hparams, dataset_root, device):
                                   num_workers=n_workers,
                                   drop_last=True,
                                   pin_memory=True)
-
+    
     valid_img_loader = DataLoader(dataset['img_valid_TP'],
                                   batch_size=batch_size,
                                   shuffle=False,
                                   num_workers=n_workers,
                                   drop_last=False,
                                   pin_memory=True)
-
     valid_img_loader_TA = DataLoader(dataset['img_valid_TA'],
                                      batch_size=batch_size,
                                      shuffle=False,
                                      num_workers=n_workers,
                                      drop_last=False,
                                      pin_memory=True)
-    valid_HG_loader_TP = DataLoader(
-        dataset['gaze_valid_TP'],
-        batch_size=batch_size,
-        shuffle=False,
-        num_workers=n_workers,
-        drop_last=False,
-        pin_memory=True)
-    valid_HG_loader_TA = DataLoader(
-        dataset['gaze_valid_TA'],
-        batch_size=batch_size,
-        shuffle=False,
-        num_workers=n_workers,
-        drop_last=False,
-        pin_memory=True)
+    valid_HG_loader_TP = DataLoader(dataset['gaze_valid_TP'],
+                                    batch_size=batch_size,
+                                    shuffle=False,
+                                    num_workers=n_workers,
+                                    drop_last=False,
+                                    pin_memory=True)
+    valid_HG_loader_TA = DataLoader(dataset['gaze_valid_TA'],
+                                    batch_size=batch_size,
+                                    shuffle=False,
+                                    num_workers=n_workers,
+                                    drop_last=False,
+                                    pin_memory=True)
 
     ffn_dim = hparams.Model.foveal_feature_dim
     hidden_dim = hparams.Model.gen_hidden_size

@@ -81,8 +81,9 @@ if __name__ == '__main__':
         valid_img_loader_ta, env, env_valid, global_step, bbox_annos,\
         human_cdf, fix_clusters, prior_maps_tp, prior_maps_ta,\
         sss_strings, valid_gaze_loader_tp, valid_gaze_loader_ta = build(
-            hparams, dataset_root, device)
-    if args.eval_only:
+            hparams, dataset_root, device, is_testing=args.eval_only)
+    
+    if args.eval_only:  # testing
         if hparams.Data.TAP != 'TA':
             rst_tp = evaluate(
                 env_valid,
