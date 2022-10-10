@@ -29,15 +29,15 @@ pip install -r requirements.txt
 ## Scripts
 - Train a model with
     ```
-    python train.py --hparams ./configs/coco_search18_TA_IQL.json --dataset_root <dataset-path>
+    python train.py --hparams ./configs/coco_search18_TA_IQL.json --dataset-root <dataset-path>
     ```
 - Train termination predictor (set the checkpoint path in hparams.Model.checkpoint first)
     ```
-    python train.py --hparams ./configs/coco_search18_TA_IQL_stop.json --dataset_root <dataset-path>
+    python train.py --hparams ./configs/coco_search18_TA_IQL_stop.json --dataset-root <dataset-path>
     ```
 - Evaluation
     ```
-    python train.py --hparams <hparams-path> --dataset_root <dataset-path> --eval-only
+    python train.py --hparams <hparams-path> --dataset-root <dataset-path> --eval-only
     ```
     
 ## Data Preparation
