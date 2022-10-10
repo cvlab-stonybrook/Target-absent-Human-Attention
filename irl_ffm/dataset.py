@@ -21,9 +21,11 @@ def process_data(target_trajs,
 
     print("using", hparams.Train.repr)
     if use_coco_annotation:
-        annFile = join(hparams.Data.coco_anno_dir, 'instances_train2017.json')
+        annFile = join(
+            dataset_root, hparams.Data.coco_anno_dir, 'instances_train2017.json')
         coco_annos_train = COCO(annFile)
-        annFile = join(hparams.Data.coco_anno_dir, 'instances_val2017.json')
+        annFile = join(
+            dataset_root, hparams.Data.coco_anno_dir, 'instances_val2017.json')
         coco_annos_val = COCO(annFile)
         coco_annos = (coco_annos_train, coco_annos_val)
     else:

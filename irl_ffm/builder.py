@@ -29,7 +29,7 @@ def build(hparams, dataset_root, device):
         human_scanpaths = json.load(json_file)
 
     # exclude incorrect scanpaths
-    if hparams.Train.exclude_wrong_trials:
+    if hparams.Data.exclude_wrong_trials:
         human_scanpaths = list(
             filter(lambda x: x['correct'] == 1, human_scanpaths))
     human_scanpaths = list(

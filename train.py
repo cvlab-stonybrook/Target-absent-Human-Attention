@@ -4,14 +4,14 @@ This script is a simplified version of the training script in
 https://github.com/cvlab-stonybrook/Scanpath_Prediction
 """
 import argparse
-import datetime
 import os
 import random
 
 import numpy as np
 
+import datetime
 import torch
-import wandb
+from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 
 from irl_ffm.builder import build
@@ -63,6 +63,11 @@ def get_batch(policy_buffer, expert_demos_iter, expert_loader, batch_size):
     return policy_batch, expert_batch, expert_demos_iter
 
 
+def log_dict(writer, scalars, step, prefix):
+    for k, v in scalars.items():
+        writer.add_scalar(prefix + "/" + k, v, step)
+
+
 if __name__ == '__main__':
     args = parse_args()
     hparams = JsonConfig(args.hparams)
@@ -77,7 +82,6 @@ if __name__ == '__main__':
         human_cdf, fix_clusters, prior_maps_tp, prior_maps_ta,\
         sss_strings, valid_gaze_loader_tp, valid_gaze_loader_ta = build(
             hparams, dataset_root, device)
-
     if args.eval_only:
         if hparams.Data.TAP != 'TA':
             rst_tp = evaluate(
@@ -113,37 +117,33 @@ if __name__ == '__main__':
             sample_scheme='Greedy',
         )
         print(rst)
+            
     else:
-        # Wandb Initialization
-        date = str(datetime.datetime.now())
-        date = date[:date.rfind('.')].replace('-', '')
-        date = date.replace(':', '').replace(' ', '_')
-        log_dir = os.path.join(hparams.Train.log_root, f'log_{date}')
+        log_dir = hparams.Train.log_dir
+        writer = SummaryWriter(log_dir)
         if not os.path.exists(log_dir):
             os.makedirs(log_dir)
         print("Log dir:", log_dir)
 
-        wandb.init(project='ECCV22', notes=log_dir)
-        wandb.config.update(hparams.to_dict())
+        # Write configuration file to the log dir
+        hparams.dump(log_dir, 'config.json')
+        
+        print_every = 20
+        max_iters = hparams.Train.max_iters
+        save_every = hparams.Train.checkpoint_every
+        eval_every = hparams.Train.evaluate_every
 
-        print_every = 50
-        NUM_EPOCH = 100
-        save_every = 5000
-        eval_every = 1000
-        n_steps = 5
-
-        REPLAY_MEMORY = 4096
-        INITIAL_MEMORY = 256
-        online_memory_replay = Memory(REPLAY_MEMORY, SEED)
+        replay_memory = hparams.Train.replay_memory
+        initial_memory = hparams.Train.initial_memory
+        online_memory_replay = Memory(replay_memory, SEED)
 
         expert_demos_iter = iter(train_gaze_loader)
-        total_iters = len(train_img_loader) * NUM_EPOCH
-        for i_epoch in range(NUM_EPOCH):
+        s_epoch = int(global_step / len(train_img_loader))
+        for i_epoch in range(s_epoch, int(1e5)):
             for i_batch, batch in enumerate(train_img_loader):
-                # run policy to collect trajactories
+                # run policy to collect trajactories for a batch of images
                 env.set_data(batch)
                 obs_fov = env.observe()
-
                 states = pack_model_inputs(obs_fov, env)
                 act, stop = agent.select_action(
                     states,
@@ -151,12 +151,11 @@ if __name__ == '__main__':
                     action_mask=env.action_mask,
                     sample_stop=env.pa.has_stop,
                 )
-
                 i_step = 0
                 while i_step < hparams.Data.max_traj_length and env.status.min() < 1:
                     i_step += 1
                     new_obs_fov, curr_status = env.step(act)
-
+                    
                     new_states = pack_model_inputs(new_obs_fov, env)
                     online_memory_replay.add_batch(
                         (states, new_states, act, curr_status, batch['centermaps']))
@@ -167,11 +166,10 @@ if __name__ == '__main__':
                         action_mask=env.action_mask,
                         sample_stop=env.pa.has_stop,
                     )
-
-        
-                    if online_memory_replay.size() <= INITIAL_MEMORY:
+                    
+                    if online_memory_replay.size() <= initial_memory:
                         continue
-
+                    
                     # Start learning
                     policy_batch, expert_batch, expert_demos_iter = get_batch(
                         online_memory_replay,
@@ -185,20 +183,23 @@ if __name__ == '__main__':
                         global_step,
                         hparams.Data.patch_num,
                     )
-                    if global_step % print_every == print_every - 1:
+                
+                    if global_step % print_every == print_every - 1 and losses is not None:
+                        date = str(datetime.datetime.now())
                         print(
-                            "iter: {}, progress: {:.3f}, epoch: {}, total loss: {:.3f}, value loss: {:.3f}, softq loss: {:.3f}, detection loss: {:.3f}"
+                            "[{}], iter: {}, progress: {:.3f}, epoch: {}, total loss: {:.3f}, value loss: {:.3f}, softq loss: {:.3f}, detection loss: {:.3f}"
                             .format(
+                                date[date.rfind(' ')+1:date.rfind('.')],
                                 global_step,
-                                (global_step / total_iters) * 100,
+                                (global_step / max_iters) * 100,
                                 i_epoch,
                                 losses['total_loss'],
                                 losses['value_loss'],
                                 losses['softq_loss'],
                                 losses['detection_loss'],
                             ))
-                        wandb.log(losses, global_step)
-
+                        log_dict(writer, losses, global_step, 'train')
+                
                     # Evaluate
                     if global_step % eval_every == eval_every - 1:
                         if hparams.Data.TAP != 'TA':
@@ -206,6 +207,7 @@ if __name__ == '__main__':
                                 env_valid,
                                 agent,
                                 valid_img_loader,
+                                valid_gaze_loader_tp,
                                 hparams_tp.Data,
                                 bbox_annos,
                                 human_cdf,
@@ -216,7 +218,7 @@ if __name__ == '__main__':
                                 sample_action=False,
                                 sample_scheme='Greedy',
                             )
-                            wandb.log(rst, step=global_step)
+                            log_dict(writer, rst, global_step, "eval_TP")
                             print("TP:", rst)
                         rst_ta = evaluate(
                             env_valid,
@@ -233,19 +235,13 @@ if __name__ == '__main__':
                             sample_action=False,
                             sample_scheme='Greedy',
                         )
+        
                         print("TA:", rst_ta)
-                        wandb.log(rst_ta, step=global_step)
-                        wandb.log(
-                            {
-                                'epoch':
-                                global_step / float(len(train_img_loader)),
-                            },
-                            step=global_step,
-                        )
+                        log_dict(writer, rst_ta, global_step, "eval_TA")
+                        writer.add_scalar('epoch', i_epoch, global_step)
 
                     if global_step % save_every == save_every - 1:
                         save_path = os.path.join(log_dir, f"ckp_{global_step}.pt")
-                        print(f"Saving checkpoint to {save_path}.")
                         torch.save(
                             {
                                 'model': agent.q_net.state_dict(),
@@ -254,6 +250,10 @@ if __name__ == '__main__':
                             },
                             save_path,
                         )
+                        print(f"Saved checkpoint to {save_path}.")
                     global_step += 1
-
-    print("Done!")
+                if global_step >= max_iters:
+                    print("Exit training!")
+            else:
+                continue
+            break
