@@ -4,7 +4,7 @@ from .models import FFNGeneratorCond_V2
 from .sql import SoftQ
 from .iql import irl_update, irl_update_critic
 from .config import JsonConfig
-from .utils import get_prior_maps
+from .utils import get_prior_maps, cutFixOnTarget
 import json
 from os.path import join
 
@@ -49,7 +49,7 @@ def build(hparams, dataset_root, device, is_testing=False):
             filter(lambda x: x['condition'] == 'present', human_scanpaths))
         human_scanpaths = list(
             filter(lambda x: x['fixOnTarget'], human_scanpaths))
-        utils.cutFixOnTarget(human_scanpaths, bbox_annos)
+        cutFixOnTarget(human_scanpaths, bbox_annos)
     elif hparams.Data.TAP == 'TA':
         human_scanpaths = list(
             filter(lambda x: x['condition'] == 'absent', human_scanpaths))
