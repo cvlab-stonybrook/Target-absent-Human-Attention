@@ -33,7 +33,7 @@ pip install -r requirements.txt
     ```
 - Train termination predictor (set the checkpoint path in hparams.Model.checkpoint first)
     ```
-    python train.py --hparams ./configs/coco_search18_TA_IQL_stop.json --dataset-root <dataset-path>
+    python train_terminator_and_eval.py --hparams ./configs/coco_search18_TA_IQL_stop.json --dataset-root <dataset-path>
     ```
 - Evaluation
     ```
