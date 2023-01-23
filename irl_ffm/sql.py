@@ -83,7 +83,7 @@ class SoftQ(object):
     def getV(self, obs):
         q = self.q_net(*obs)
         v = self.alpha * \
-            torch.logsumexp(q/self.alpha, dim=1, keepdim=True)
+            torch.logsumexp(q/self.alpha, dim=1)
         return v
 
     def critic(self, obs, action, do_aux_task=False):
@@ -97,7 +97,7 @@ class SoftQ(object):
     def get_targetV(self, obs):
         q = self.target_net(*obs)
         target_v = self.alpha * \
-            torch.logsumexp(q/self.alpha, dim=1, keepdim=True)
+            torch.logsumexp(q/self.alpha, dim=1)
         return target_v
 
     def update(self, replay_buffer, logger, step):
@@ -244,7 +244,7 @@ class SoftQ_wStop(object):
         if self.has_stop:
             q = q[0]
         v = self.alpha * \
-            torch.logsumexp(q/self.alpha, dim=1, keepdim=True)
+            torch.logsumexp(q/self.alpha, dim=1)
         return v
 
     def critic(self, obs, action, do_aux_task=False):
@@ -274,7 +274,7 @@ class SoftQ_wStop(object):
         if self.has_stop:
             q = q[0]
         target_v = self.alpha * \
-            torch.logsumexp(q/self.alpha, dim=1, keepdim=True)
+            torch.logsumexp(q/self.alpha, dim=1)
         return target_v
 
     def update(self, replay_buffer, logger, step):
